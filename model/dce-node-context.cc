@@ -133,6 +133,17 @@ DceNodeContext::RandomRead (void *buf, size_t count)
   return count;
 }
 
+int
+DceNodeContext::GPSttyRead (void *buf, size_t count)
+{
+  uint8_t *crsr = (uint8_t*)buf;
+  for (uint32_t i = 0; i < count; i++)
+    {
+      *crsr++ = (uint8_t)i;
+    }
+  return count;
+}
+
 uint8_t
 DceNodeContext::GetNextRnd ()
 {

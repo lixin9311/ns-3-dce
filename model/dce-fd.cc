@@ -109,6 +109,10 @@ int dce_open (const char *path, int flags, ...)
     {
       unixFd = new UnixRandomFd (path);
     }
+  else if (std::string (path) == "/dev/ttyGPS")
+    {
+      unixFd = new UnixGPSttyFd (path);
+    }
   else
     {
       std::string fullpath = UtilsGetRealFilePath (path);
