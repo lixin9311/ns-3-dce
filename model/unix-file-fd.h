@@ -102,7 +102,24 @@ private:
   std::string m_devPath;
 };
 
+// Dev ttyGPS special files
+class UnixGPSttyFd : public UnixFileFdBase
+{
+public:
+  UnixGPSttyFd (std::string devicePath);
+  virtual ~UnixGPSttyFd ();
+  virtual ssize_t Read (void *buf, size_t count);
+  virtual bool CanRecv (void) const;
+  virtual int Close (void);
+  virtual bool CanSend (void) const;
+  virtual ssize_t Write (const void *buf, size_t count);
+  virtual int Fxstat (int ver, struct ::stat *buf);
+  virtual int Fxstat64 (int ver, struct ::stat64 *buf);
+  virtual int Fcntl (int cmd, unsigned long arg);
+private:
+  std::string m_devPath;
+};
+
 } // namespace ns3
 
 #endif /* UNIX_FILE_FD_H */
-
