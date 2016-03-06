@@ -531,4 +531,90 @@ UnixFileFdBase::Fsync (void)
     }
   return retval;
 }
+
+UnixGPSttyFd::UnixGPSttyFd (std::string devPath) : m_devPath (devPath),
+                                                   UnixFileFdBase (-1)
+{
+}
+
+UnixGPSttyFd::~UnixGPSttyFd ()
+{
+
+}
+
+ssize_t
+UnixGPSttyFd::Read (void *buf, size_t count)
+{
+  Ptr<DceNodeContext> nodeContext = DceNodeContext::GetNodeContext ();
+  NS_ASSERT (0 != nodeContext);
+  Thread *current = Current ();
+  current->process->manager->Wait (Time (MilliSeconds (500)));
+
+  return nodeContext->GPSttyRead (buf, count);
+}
+
+bool
+UnixGPSttyFd::CanRecv (void) const
+{
+  return true;
+}
+
+int
+UnixGPSttyFd::Close (void)
+{
+  return 0;
+}
+bool
+UnixGPSttyFd::CanSend (void) const
+{
+  return true;
+}
+ssize_t
+UnixGPSttyFd::Write (const void *buf, size_t count)
+{
+  Thread *current = Current ();
+  NS_ASSERT (current != 0);
+  // could be trouble
+  return 0;
+  current->err = EBADF;
+
+  return -1;
+}
+int
+UnixGPSttyFd::Fxstat (int ver, struct ::stat *buf)
+{
+  return -1;
+}
+int
+UnixGPSttyFd::Fxstat64 (int ver, struct ::stat64 *buf)
+{
+  return -1;
+}
+int
+UnixGPSttyFd::Fcntl (int cmd, unsigned long arg)
+{
+  switch (cmd)
+    {
+    case F_GETFL:
+      return m_statusFlags;
+      break;
+    case F_SETFL:
+      m_statusFlags = arg;
+      return 0;
+      break;
+
+    case F_GETFD:
+      return m_fdFlags;
+      break;
+    case F_SETFD:
+      m_fdFlags = arg;
+      return 0;
+      break;
+
+    default:
+      //XXX commands missing
+      NS_FATAL_ERROR ("fcntl not implemented on socket");
+      return -1;
+    }
+}
 } // namespace ns3
