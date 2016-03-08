@@ -535,6 +535,7 @@ UnixFileFdBase::Fsync (void)
 UnixGPSttyFd::UnixGPSttyFd (std::string devPath) : m_devPath (devPath),
                                                    UnixFileFdBase (-1)
 {
+    Time last_access = Time::Min();
 }
 
 UnixGPSttyFd::~UnixGPSttyFd ()
@@ -545,18 +546,31 @@ UnixGPSttyFd::~UnixGPSttyFd ()
 ssize_t
 UnixGPSttyFd::Read (void *buf, size_t count)
 {
+  // Check if data available
+  if (!CanRecv ())
+    {
+    Thread *current = Current ();
+    NS_ASSERT (current != 0);
+    if (m_statusFlags & O_NONBLOCK)
+      {
+        current->err = EAGAIN;
+        return -1;
+      }
+    else
+      {
+        current->process->manager->Wait (Now () + 1 - last_access);
+      }
+    }
   Ptr<DceNodeContext> nodeContext = DceNodeContext::GetNodeContext ();
   NS_ASSERT (0 != nodeContext);
-  Thread *current = Current ();
-  current->process->manager->Wait (Time (MilliSeconds (500)));
-
+  last_access = Now ();
   return nodeContext->GPSttyRead (buf, count);
 }
 
 bool
 UnixGPSttyFd::CanRecv (void) const
 {
-  return true;
+  return Now () >= last_access + 1;
 }
 
 int
