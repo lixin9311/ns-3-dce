@@ -118,6 +118,7 @@ public:
   virtual int Fcntl (int cmd, unsigned long arg);
 private:
   std::string m_devPath;
+  Time last_access;
 };
 
 } // namespace ns3
