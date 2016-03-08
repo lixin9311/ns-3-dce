@@ -558,7 +558,7 @@ UnixGPSttyFd::Read (void *buf, size_t count)
       }
     else
       {
-        current->process->manager->Wait (Now () + 1 - last_access);
+        current->process->manager->Wait (Seconds(1) + last_access - Now ());
       }
     }
   Ptr<DceNodeContext> nodeContext = DceNodeContext::GetNodeContext ();
@@ -570,7 +570,7 @@ UnixGPSttyFd::Read (void *buf, size_t count)
 bool
 UnixGPSttyFd::CanRecv (void) const
 {
-  return Now () >= last_access + 1;
+  return Now () >= last_access + Seconds(1);
 }
 
 int
