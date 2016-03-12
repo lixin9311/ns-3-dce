@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include "dce-node-context.h"
 #include "poll.h"
+#include <string.h>
 
 NS_LOG_COMPONENT_DEFINE ("DceUnixFileFd");
 
@@ -564,7 +565,18 @@ UnixGPSttyFd::Read (void *buf, size_t count)
   Ptr<DceNodeContext> nodeContext = DceNodeContext::GetNodeContext ();
   NS_ASSERT (0 != nodeContext);
   last_access = Now ();
-  return nodeContext->GPSttyRead (buf, count);
+  char* buffer = (char*)malloc(512);
+  buffer = (char*)memset(buffer, 0, 512);
+  int n = nodeContext->GPSttyRead (buffer, count);
+  if (n > count) {
+    // TODO
+    free(buffer);
+    return -1;
+  } else {
+    memcpy(buf, buffer, n);
+    free(buffer);
+    return n;
+  }
 }
 
 bool

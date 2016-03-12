@@ -31,6 +31,17 @@
 #include <string.h>
 #include "process.h"
 #include "dce-manager.h"
+#include <ctime>
+#include <cmath>
+#include "ns3/mobility-model.h"
+
+inline unsigned char gps_checksum(char* str, int size) {
+  char check = 0;
+  for (int i = 0; i < size; i++) {
+    check = char(check ^ str[i]);
+  }
+  return check;
+}
 
 NS_LOG_COMPONENT_DEFINE ("DceNodeContext");
 
@@ -54,8 +65,8 @@ DceNodeContext::GetInstanceTypeId (void) const
 DceNodeContext::DceNodeContext ()
 {
   m_randomCtx = CreateObject<NormalRandomVariable> ();
-  m_randomCtx->SetAttribute ("Mean", DoubleValue (0)); 
-  m_randomCtx->SetAttribute ("Variance", DoubleValue (2 ^ 32 - 1)); 
+  m_randomCtx->SetAttribute ("Mean", DoubleValue (0));
+  m_randomCtx->SetAttribute ("Variance", DoubleValue (2 ^ 32 - 1));
   m_rndBuffer = m_randomCtx->GetInteger ();
   m_rndOffset = 0;
 }
@@ -136,12 +147,69 @@ DceNodeContext::RandomRead (void *buf, size_t count)
 int
 DceNodeContext::GPSttyRead (void *buf, size_t count)
 {
-  uint8_t *crsr = (uint8_t*)buf;
-  for (uint32_t i = 0; i < count; i++)
-    {
-      *crsr++ = (uint8_t)i;
+  int size = 0;
+  char* cbuf = (char*)buf;
+  uint32_t nodeId = UtilsGetNodeId ();
+  Ptr<Node> node = NodeList::GetNode (nodeId);
+  NS_ASSERT (node != 0);
+  Ptr<MobilityModel> mobility = node->GetObject<MobilityModel>();
+  NS_ASSERT (mobility != 0);
+  Vector current = mobility->GetPosition();
+  pos center, cart, geo;
+  char NorS, EorW;
+  double lat, lon;
+  double speed = 22.4;
+  double deg = 084.4;
+
+  center.x = 0;
+  center.y = 0;
+  LocalArea lc(&center);
+  cart.x = current.x;
+  cart.y = current.y;
+  lc.Cart2Geo(&cart, &geo);
+  {
+    if (geo.x < 0) {
+      EorW = 'W';
+    } else {
+      EorW = 'E';
     }
-  return count;
+    if (geo.y < 0) {
+      NorS = 'S';
+    } else {
+      NorS = 'N';
+    }
+  }
+  lat = ((geo.y - fmod(geo.y , 1.0)) * 100.0) + (fmod(geo.y , 1.0) * 60.0);
+  lon = ((geo.x - fmod(geo.x , 1.0)) * 100.0) + (fmod(geo.x , 1.0) * 60.0);
+  Time sim_time = Now();
+  time_t rawtime = sim_time.GetMilliSeconds() / 1000;
+  struct tm * ptm;
+  char date[7], time_sec[7], time_sec2[7];
+  ptm = gmtime(&rawtime);
+
+  strftime(date,7,"%d%m%y", ptm);
+  strftime(time_sec,7,"%S%M%H", ptm);
+  strftime(time_sec2,7,"%H%M%S", ptm);
+  char* tmp = (char*)malloc(512);
+  unsigned char checksum;
+  int n;
+
+  tmp = (char*)memset(tmp, 0, 512);
+  n = sprintf(tmp, "GPRMC,%s,A,%010.5f,%c,%011.5f,%c,%05.1f,%05.1f,%s,003.1,%c", time_sec, lat, NorS, lon, EorW, speed, deg, date, EorW);
+  NS_ASSERT (n > 0);
+  checksum = gps_checksum(tmp, n);
+  n = sprintf(cbuf, "$%s*%02X\r\n", tmp, checksum);
+  cbuf += n;
+  size += n;
+
+  tmp = (char*)memset(tmp, 0, 512);
+  n = sprintf(tmp, "GPGGA,%s,%06.2f,%c,%07.2f,%c,1,08,0.9,0.0,M,46.9,M,,", time_sec2, lat, NorS, lon, EorW);
+  NS_ASSERT (n > 0);
+  checksum = gps_checksum(tmp, n);
+  n = sprintf(cbuf, "$%s*%02X\r\n", tmp, checksum);
+  free(tmp);
+  size += n;
+  return size;
 }
 
 uint8_t
