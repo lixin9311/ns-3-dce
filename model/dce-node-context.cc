@@ -182,7 +182,8 @@ DceNodeContext::GPSttyRead (void *buf, size_t count)
   lat = ((geo.y - fmod(geo.y , 1.0)) * 100.0) + (fmod(geo.y , 1.0) * 60.0);
   lon = ((geo.x - fmod(geo.x , 1.0)) * 100.0) + (fmod(geo.x , 1.0) * 60.0);
   Time sim_time = Now();
-  time_t rawtime = sim_time.GetMilliSeconds() / 1000;
+  sim_time = UtilsSimulationTimeToTime(sim_time);
+  time_t rawtime = (time_t)sim_time.GetSeconds();
   struct tm * ptm;
   char date[7], time_sec[7], time_sec2[7];
   ptm = gmtime(&rawtime);
