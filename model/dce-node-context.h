@@ -21,7 +21,10 @@
 #ifndef DCE_NODE_CONTEXT_H
 #define DCE_NODE_CONTEXT_H
 
+#define _USE_MATH_DEFINES
+#define RADIUS 6378137.0
 #include <string>
+#include <cmath>
 #include "ns3/object.h"
 #include "ns3/nstime.h"
 #include "ns3/traced-callback.h"
@@ -35,6 +38,35 @@ namespace ns3 {
 
 struct Process;
 struct Thread;
+
+struct pos {
+	double x, y; // x -> lon, y -> lat
+};
+
+class LocalArea : public Object {
+	public:
+	pos center;
+	double dlon, dlat;
+	int Geo2Cart(pos* geo, pos* cart) {
+  	cart->x = (geo->x - this->center.x) * this->dlon;
+  	cart->y = (geo->y - this->center.y) * this->dlat;
+  	return 0;
+  }
+	int Cart2Geo(pos* cart, pos* geo) {
+  	geo->x = this->center.x + (cart->x / this->dlon);
+  	geo->y = this->center.y + (cart->y / this->dlat);
+  	return 0;
+  }
+	LocalArea(pos* geo) {
+		this->init(geo);
+	}
+	int init(pos* geo) {
+  	this->center = *geo;
+  	this->dlat = RADIUS * M_PI / 180.0;
+  	this->dlon = RADIUS * cos(geo->y / 180.0 * M_PI) * M_PI / 180.0;
+  	return 0;
+  }
+};
 
 /**
  * \brief Manages data attached to a Node usable by DCE such as uname result random context ...
