@@ -536,7 +536,8 @@ UnixFileFdBase::Fsync (void)
 UnixGPSttyFd::UnixGPSttyFd (std::string devPath) : m_devPath (devPath),
                                                    UnixFileFdBase (-1)
 {
-    Time last_access = Time::Min();
+    last_access = Time::Min();
+    unread_length = 0;
 }
 
 UnixGPSttyFd::~UnixGPSttyFd ()
@@ -563,22 +564,40 @@ UnixGPSttyFd::Read (void *buf, size_t count)
       }
     }
   if (unread_length > 0) {
-    if (unread_length > count) {
+    if (unread_length >= count) {
       memcpy(buf, buffer, count);
       unread_length -= count;
       memmove(buffer, buffer + count, unread_length);
       return count;
     } else {
       memcpy(buf, buffer, unread_length);
-      count = unread_length;
-      unread_length = 0;
-      return count;
+      if (Now () >= last_access + Seconds(1)) {
+        int ori_count = count;
+        count -= unread_length;
+        Ptr<DceNodeContext> nodeContext = DceNodeContext::GetNodeContext ();
+        NS_ASSERT (0 != nodeContext);
+        last_access = Now ();
+        int n = nodeContext->GPSttyRead (buffer, 512);
+        if (n > count) {
+          memcpy((char*)buf + unread_length, buffer, count);
+          unread_length = n - count;
+          memmove(buffer, buffer + count, unread_length);
+          return ori_count;
+        } else {
+          memcpy((char*)buf + unread_length, buffer, n);
+          unread_length = 0;
+          return n + ori_count;
+        }
+      } else {
+        count = unread_length;
+        unread_length = 0;
+        return count;
+      }
     }
   }
   Ptr<DceNodeContext> nodeContext = DceNodeContext::GetNodeContext ();
   NS_ASSERT (0 != nodeContext);
   last_access = Now ();
-  memset(buffer,0,512);
   int n = nodeContext->GPSttyRead (buffer, 512);
   if (n > count) {
     memcpy(buf, buffer, count);
@@ -595,7 +614,7 @@ UnixGPSttyFd::Read (void *buf, size_t count)
 bool
 UnixGPSttyFd::CanRecv (void) const
 {
-  return unread_length > 0 || Now () >= last_access + Seconds(1);
+  return (unread_length > 0 || Now () >= last_access + Seconds(1));
 }
 
 int
