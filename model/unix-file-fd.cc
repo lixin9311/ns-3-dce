@@ -562,19 +562,32 @@ UnixGPSttyFd::Read (void *buf, size_t count)
         current->process->manager->Wait (Seconds(1) + last_access - Now ());
       }
     }
+  if (unread_length > 0) {
+    if (unread_length > count) {
+      memcpy(buf, buffer, count);
+      unread_length -= count;
+      memmove(buffer, buffer + count, unread_length);
+      return count;
+    } else {
+      memcpy(buf, buffer, unread_length);
+      count = unread_length;
+      unread_length = 0;
+      return count;
+    }
+  }
   Ptr<DceNodeContext> nodeContext = DceNodeContext::GetNodeContext ();
   NS_ASSERT (0 != nodeContext);
   last_access = Now ();
-  char* buffer = (char*)malloc(512);
-  buffer = (char*)memset(buffer, 0, 512);
-  int n = nodeContext->GPSttyRead (buffer, count);
+  memset(buffer,0,512);
+  int n = nodeContext->GPSttyRead (buffer, 512);
   if (n > count) {
-    // TODO
-    free(buffer);
-    return -1;
+    memcpy(buf, buffer, count);
+    unread_length = n - count;
+    memmove(buffer, buffer + count, unread_length);
+    return count;
   } else {
     memcpy(buf, buffer, n);
-    free(buffer);
+    unread_length = 0;
     return n;
   }
 }
@@ -582,7 +595,7 @@ UnixGPSttyFd::Read (void *buf, size_t count)
 bool
 UnixGPSttyFd::CanRecv (void) const
 {
-  return Now () >= last_access + Seconds(1);
+  return unread_length > 0 || Now () >= last_access + Seconds(1);
 }
 
 int

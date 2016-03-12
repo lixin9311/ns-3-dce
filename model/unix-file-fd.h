@@ -119,6 +119,8 @@ public:
 private:
   std::string m_devPath;
   Time last_access;
+  char buffer[512];
+  int unread_length;
 };
 
 } // namespace ns3
