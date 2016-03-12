@@ -732,7 +732,7 @@ def build(bld):
 
     module_source = module_source + kernel_source
     module_headers = module_headers + kernel_headers
-    uselib = ns3waf.modules_uselib(bld, ['core', 'network', 'internet', 'netlink'])
+    uselib = ns3waf.modules_uselib(bld, ['core', 'network', 'internet', 'netlink', 'mobility'])
     module = ns3waf.create_module(bld, name='dce',
                                   source=module_source,
                                   headers=module_headers,
