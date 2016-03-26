@@ -173,18 +173,17 @@ DceNodeContext::GPSttyRead (void *buf, size_t count)
   Time sim_time = UtilsSimulationTimeToTime(Now());
   time_t rawtime = (time_t)sim_time.GetSeconds();
   struct tm *ptm;
-  char date[7], time_smh[7], time_hms[7];
+  char date[7], time_hms[7];
   ptm = gmtime(&rawtime);
 
   strftime(date,7,"%d%m%y", ptm);
-  strftime(time_smh,7,"%S%M%H", ptm);
   strftime(time_hms,7,"%H%M%S", ptm);
   char* tmp = (char*)malloc(512);
   unsigned char checksum;
   int n;
 
   tmp = (char*)memset(tmp, 0, 512);
-  n = sprintf(tmp, "GPRMC,%s,A,%09.4lf,%c,%010.4lf,%c,000.5,054.7,%s,,,A", time_smh, lat, NorS, lon, EorW, date, EorW);
+  n = sprintf(tmp, "GPRMC,%s,A,%09.4lf,%c,%010.4lf,%c,000.5,054.7,%s,,,A", time_hms, lat, NorS, lon, EorW, date);
   NS_ASSERT (n > 0);
   checksum = gps_checksum(tmp, n);
   n = sprintf(cbuf, "$%s*%02X\r\n", tmp, checksum);
