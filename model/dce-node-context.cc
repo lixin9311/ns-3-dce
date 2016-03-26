@@ -148,8 +148,6 @@ DceNodeContext::GPSttyRead (void *buf, size_t count)
   pos center, cart, geo;
   char NorS, EorW;
   double lat, lon;
-  double speed = 22.4;
-  double deg = 084.4;
 
   center.x = 0;
   center.y = 0;
@@ -157,36 +155,26 @@ DceNodeContext::GPSttyRead (void *buf, size_t count)
   cart.x = current.x;
   cart.y = current.y;
   lc.Cart2Geo(&cart, &geo);
-  {
-    if (geo.x < 0) {
-      EorW = 'W';
-    } else {
-      EorW = 'E';
-    }
-    if (geo.y < 0) {
-      NorS = 'S';
-    } else {
-      NorS = 'N';
-    }
-  }
+  EorW = geo.x < 0 ? 'W' : 'E';
+  NorS = geo.y < 0 ? 'S' : 'N';
   lat = ((geo.y - fmod(geo.y , 1.0)) * 100.0) + (fmod(geo.y , 1.0) * 60.0);
   lon = ((geo.x - fmod(geo.x , 1.0)) * 100.0) + (fmod(geo.x , 1.0) * 60.0);
-  Time sim_time = Now();
-  sim_time = UtilsSimulationTimeToTime(sim_time);
+
+  Time sim_time = UtilsSimulationTimeToTime(Now());
   time_t rawtime = (time_t)sim_time.GetSeconds();
-  struct tm * ptm;
-  char date[7], time_sec[7], time_sec2[7];
+  struct tm *ptm;
+  char date[7], time_smh[7], time_hms[7];
   ptm = gmtime(&rawtime);
 
   strftime(date,7,"%d%m%y", ptm);
-  strftime(time_sec,7,"%S%M%H", ptm);
-  strftime(time_sec2,7,"%H%M%S", ptm);
+  strftime(time_smh,7,"%S%M%H", ptm);
+  strftime(time_hms,7,"%H%M%S", ptm);
   char* tmp = (char*)malloc(512);
   unsigned char checksum;
   int n;
 
   tmp = (char*)memset(tmp, 0, 512);
-  n = sprintf(tmp, "GPRMC,%s,A,%010.5f,%c,%011.5f,%c,%05.1f,%05.1f,%s,003.1,%c", time_sec, lat, NorS, lon, EorW, speed, deg, date, EorW);
+  n = sprintf(tmp, "GPRMC,%s,A,%09.4lf,%c,%010.4lf,%c,000.5,054.7,%s,,,A", time_smh, lat, NorS, lon, EorW, date, EorW);
   NS_ASSERT (n > 0);
   checksum = gps_checksum(tmp, n);
   n = sprintf(cbuf, "$%s*%02X\r\n", tmp, checksum);
@@ -194,7 +182,7 @@ DceNodeContext::GPSttyRead (void *buf, size_t count)
   size += n;
 
   tmp = (char*)memset(tmp, 0, 512);
-  n = sprintf(tmp, "GPGGA,%s,%06.2f,%c,%07.2f,%c,1,08,0.9,0.0,M,46.9,M,,", time_sec2, lat, NorS, lon, EorW);
+  n = sprintf(tmp, "GPGGA,%s,%09.4lf,%c,%010.4lf,%c,1,08,0.9,0.0,M,46.9,M,,", time_hms, lat, NorS, lon, EorW);
   NS_ASSERT (n > 0);
   checksum = gps_checksum(tmp, n);
   n = sprintf(cbuf, "$%s*%02X\r\n", tmp, checksum);
